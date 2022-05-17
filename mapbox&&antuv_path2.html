@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css' rel='stylesheet' />
+  <script src='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js'></script>
+<script src='https://unpkg.com/@antv/l7'></script>
+<script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+  <title>Document</title>
+  <style>
+    html,
+    body,
+    #app,
+    #map {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-size: 12px;
+    }
+</style>
+</head>
+<body>
+  <div id="app">
+    <div id="map"></div>
+  </div>
+  <script>
+    const style = {
+        "version": 8,
+        "sources": {
+            "nav": {
+                "type": "raster",
+                "tiles": ['http://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}'],
+                "tileSize": 256
+            }
+        },
+        "layers": [{
+            "id": "nav",
+            "type": "raster",
+            "source": "nav",
+            "minzoom": 0,
+            "maxzoom": 17
+        }]
+    }
+    const dom = document.getElementById('map');
+    window.map = new mapboxgl.Map({
+        container: dom,
+        style: style,
+        center: [103.081163, 37.1612],
+        zoom: 3.5,
+    });
+    const scene = new L7.Scene({
+        id: 'map',
+        map: new L7.Mapbox({
+            mapInstance: map
+        })
+    });
+    function getRandomColor(){
+        this.r = Math.floor(Math.random()*255);
+        this.g = Math.floor(Math.random()*255);
+        this.b = Math.floor(Math.random()*255);
+        return 'rgb('+ this.r +','+ this.g +','+ this.b +')';
+    }
+    map.on('load', () => {
+        const url = './data/line.json'
+        $.get(url, data => {
+            const layer = new L7.LineLayer()
+                .source(data, {
+                    parser: {
+                        type: 'json',
+                        coordinates: 'path'
+                    }
+                })
+                .size(1.5)
+                .shape('line')
+                .color('color', v => {
+                    return getRandomColor();
+                })
+                .animate({
+                    interval: 0.6,
+                    trailLength: 1.5,
+                    duration: 6
+                });
+            scene.addLayer(layer);
+        })
+    })
+  </script>
+</body>
+</html>

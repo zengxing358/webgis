@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/@antv/l7"></script>
+    <script src="js/geotiff.js"></script>
+    <style>
+      html,
+      body,
+      #app,
+      #map {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="map"></div>
+    </div>
+    <script>
+        const style = {
+        "version": 8,
+        "sources": {
+            "nav": {
+                "type": "raster",
+                "tiles": ['https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}'],
+                "tileSize": 256
+            }
+        },
+        "layers": [{
+            "id": "nav",
+            "type": "raster",
+            "source": "nav",
+            "minzoom": 0,
+            "maxzoom": 17
+        }]
+    }
+    const dom = document.getElementById('map');
+    window.map = new mapboxgl.Map({
+        container: dom,
+        style: style,
+        center: [103.081163, 37.1612],
+        zoom: 3.5,
+    });
+    const scene = new L7.Scene({
+        id: dom,
+        map: new L7.Mapbox({
+            mapInstance: map
+        })
+    });
+    async function getTiffData() {
+        const response = await fetch('./data/ndvi.tiff');
+        const arrayBuffer = await response.arrayBuffer();
+        const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+        const image = await tiff.getImage();
+        const width = image.getWidth();
+        const height = image.getHeight();
+        const values = await image.readRasters();
+        return {
+            data: values[0],
+            width,
+            height
+        };
+    }
+    map.on('load', () => {
+        (async function(){
+            const layer = new L7.RasterLayer();
+            map.getCanvas().style.cursor = 'wait';
+            const tiffdata = await getTiffData();
+            layer
+                .source(tiffdata.data, {
+                    parser: {
+                        type: 'raster',
+                        width: tiffdata.width,
+                        height: tiffdata.height,
+                        extent: [ 73.4766000000000048, 18.1054999999999993, 135.1066187, 57.6300460 ]
+                    }
+                })
+                .style({
+                    opacity: 0.8,
+                    clampLow: false,
+                    clampHigh: false,
+                    domain: [ -3000, 10000 ],
+                    rampColors: {
+                        colors: [ 'rgb(255,0,0)', 'rgb(252,161,67)', 'rgb(255,249,74)', 'rgb(0,0,255)', 'rgb(1,133,113)' ],
+                        positions: [ 0, 0.25, 0.5, 0.75, 1.0 ]
+                    }
+                });
+
+            scene.addLayer(layer);
+            map.getCanvas().style.cursor = '';
+        })()
+    })
+    </script>
+  </body>
+</html>

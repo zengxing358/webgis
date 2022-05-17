@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
+    <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+
+    <style>
+      html,
+      body,
+      #map {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      .marker-point {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        opacity: 1;
+        background-color: red;
+        cursor: pointer;
+      }
+      .my-popup {
+        color: white;
+      }
+      ul {
+        margin: 0;
+        padding: 0;
+      }
+      li {
+        list-style: none;
+      }
+      .my-popup .mapboxgl-popup-content {
+        background-color: rgba(0, 0, 0, 0.65);
+        margin: 0;
+        padding: 0 8px 8px 8px;
+        white-space: nowrap;
+        font-size: 12px;
+      }
+      .my-popup .mapboxgl-popup-content h4 {
+        margin: 0 0 3px 0;
+        padding: 3px 0;
+        font-size: 14px;
+      }
+      .my-popup .mapboxgl-popup-tip {
+          border-top-color: rgba(0, 0, 0, 0.65) !important; }
+      .popup-close {
+        float: right;
+        cursor: pointer;
+        margin: 0 3px;
+        font-size: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <script>
+      const style = {
+        version: 8,
+        sources: {
+          nav: {
+            type: "raster",
+            tiles: [
+              "https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}",
+            ],
+            tileSize: 256,
+          },
+        },
+        layers: [
+          {
+            id: "nav",
+            type: "raster",
+            source: "nav",
+            minzoom: 0,
+            maxzoom: 17,
+          },
+        ],
+      };
+      const dom = document.getElementById("map");
+      var map = new mapboxgl.Map({
+        container: dom,
+        style: style,
+        center: [103.081163, 37.1612],
+        zoom: 3.5,
+      });
+      var data = [];
+      var popup;
+      map.on("load", () => {
+        popup = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          className: "my-popup",
+          offset: [0, -8],
+          anchor: "bottom",
+        });
+
+        $.get("data/point.geojson", (res) => {
+          data = res.features;
+          for (let i = 0, len = data.length; i < len; i++) {
+            const d = data[i];
+            const ele = document.createElement("div");
+            const pt = document.createElement("div");
+            pt.setAttribute("index", i);
+            pt.setAttribute("class", "marker-point");
+            ele.appendChild(pt);
+            const option = {
+              element: ele,
+              anchor: "center",
+            };
+            var marker = new mapboxgl.Marker(option)
+              .setLngLat(d.geometry.coordinates)
+              .addTo(map);
+
+            pt.onclick = function (e) {
+              const target = e.target;
+              const idx = target.getAttribute("index");
+              showPopup(data[idx]);
+            };
+          }
+        });
+      });
+
+      function showPopup(data) {
+        var name = data.properties.name;
+        var description = `
+            <h4>
+              ${name}
+              <span id="popupClose" class="popup-close">×</span>
+            </h4>
+            <ul>
+              <li>温度： 20℃</li>
+              <li>湿度： 52%</li>
+              <li>降水： 1mm</li>
+              <li>风速： 4m/s</li>
+              <li>风向： 无持续风向</li>
+            </ul>
+          `;
+        popup
+          .setLngLat(data.geometry.coordinates)
+          .setHTML(description)
+          .addTo(map);
+        // 添加关闭事件
+        document.getElementById("popupClose").onclick = function () {
+          popup.remove();
+        };
+      }
+    </script>
+  </body>
+</html>

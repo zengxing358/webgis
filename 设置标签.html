@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
+    <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+
+    <style>
+      html,
+      body,
+      #map {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      .point-label {
+          background-color: black;
+          opacity: 0.5;
+          padding: 0 5px;
+          border-radius: 4px;
+          white-space: nowrap;
+          color: white;
+          font-size: 12px;
+      }
+      .point-label:after {
+          position: absolute;
+          top: calc(100% - 1px);
+          left: calc(50% - 6px);
+          content: " ";
+          width: 0;
+          height: 0;
+          border: 6px solid transparent;
+          border-top-color: black;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <script>
+      const style = {
+        "version": 8,
+        "sources": {
+            "nav": {
+                "type": "raster",
+                "tiles": ['https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}'],
+                "tileSize": 256
+            }
+        },
+        "layers": [{
+            "id": "nav",
+            "type": "raster",
+            "source": "nav",
+            "minzoom": 0,
+            "maxzoom": 17
+        }]
+    }
+    const dom = document.getElementById('map');
+    window.map = new mapboxgl.Map({
+        container: dom,
+        style: style,
+        center: [103.081163, 37.1612],
+        zoom: 3.5,
+    });
+    map.on('load', function () {
+        $.get('data/point.geojson', res => {
+            map.addSource('geojson', {
+                data: res,
+                type: 'geojson'
+            })
+            // map.addLayer({
+            //     id: 'capital',
+            //     source: 'geojson',
+            //     type: 'circle',
+            //     paint: {
+            //         'circle-radius': 4,
+            //         'circle-color': '#f00'
+            //     }
+            // })
+            console.log(res)
+            res = res.features
+            res.forEach(item => {
+                const name = item.properties.name
+                const coords = item.geometry.coordinates
+                const div = document.createElement('div')
+                div.setAttribute('class', 'point-label')
+                div.innerText = name
+                const marker = new mapboxgl.Marker({
+                    element: div,
+                    anchor: 'left',
+                    offset: [-16, -14],
+                    draggable: false,
+                    rotation: 0
+                }).setLngLat(coords).addTo(map);
+            })
+        })
+    })
+    </script>
+  </body>
+</html>

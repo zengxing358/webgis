@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css' rel='stylesheet' />
+  <script src='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js'></script>
+  <script src = 'https://unpkg.com/@antv/l7'></script>
+  <style>
+    html,
+    body,
+    #app,
+    #map {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-size: 12px;
+    }
+</style>
+</head>
+<body>
+  <div id="app">
+    <div id="map"></div>
+  </div>
+  <script>
+    const style = {
+        "version": 8,
+        "sources": {
+            "nav": {
+                "type": "raster",
+                "tiles": ['https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}'],
+                "tileSize": 256
+            }
+        },
+        "layers": [{
+            "id": "nav",
+            "type": "raster",
+            "source": "nav",
+            "minzoom": 0,
+            "maxzoom": 17
+        }]
+    }
+    const dom = document.getElementById('map');
+    window.map = new mapboxgl.Map({
+        container: dom,
+        style: style,
+        center: [120.19382, 30.2581],
+        zoom: 12.5,
+    });
+    const scene = new L7.Scene({
+        id: dom,
+        map: new L7.Mapbox({
+            mapInstance: map
+        })
+    });
+    map.on('load', () => {
+        fetch(
+            'https://gw.alipayobjects.com/os/basement_prod/40ef2173-df66-4154-a8c0-785e93a5f18e.json'
+        ).then(res => res.json()).then(data => {
+            const layer = new L7.LineLayer()
+                .source(data)
+                .size(1.5)
+                .shape('line')
+                .color('#25d8b7')
+                .animate({
+                    interval: 1, // 间隔
+                    duration: 1, // 持续时间，延时
+                    trailLength: 2 // 流线长度
+                });
+            scene.addLayer(layer);
+        });
+    })
+  </script>
+</body>
+</html>

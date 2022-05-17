@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6.3.0/turf.min.js" ?></script>
+    <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+    <title>Document</title>
+    <style>
+      html,
+      body,
+      #map {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      .button-box {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 99;
+      }
+      .draw-tooltips {
+        padding: 0 3px;
+        background-color: rgba(255, 255, 255, 0.6);
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map">
+      <div class="button-box">
+        <button onclick="drawTools.activeDraw('point')">点</button>
+        <button onclick="drawTools.activeDraw('line')">线</button>
+        <button onclick="drawTools.activeDraw('polygon')">面</button>
+        <button onclick="drawTools.activeDraw('rect')">矩形</button>
+        <button onclick="drawTools.activeDraw('circle')">圆</button>
+        <button onclick="drawTools.clearDraw()">清除</button>
+      </div>
+    </div>
+    <script>
+      const style = {
+        version: 8,
+        sources: {
+          nav: {
+            type: "raster",
+            tiles: [
+              "https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}",
+            ],
+            tileSize: 256,
+          },
+        },
+        layers: [
+          {
+            id: "nav",
+            type: "raster",
+            source: "nav",
+            minzoom: 0,
+            maxzoom: 17,
+          },
+        ],
+      };
+      const dom = document.getElementById("map");
+      window.map = new mapboxgl.Map({
+        container: dom,
+        style: style,
+        center: [103.081163, 37.1612],
+        zoom: 3.5,
+      });
+      var drawTools = {
+        points: [],
+        markers: [],
+        tooltip: null,
+        isDraw: false,
+        drawType: "",
+
+        init() {
+          const that = this;
+          const ele = document.createElement("div");
+          ele.setAttribute("class", "draw-tooltips");
+          const option = {
+            element: ele,
+            anchor: "left",
+            offset: [10, 0],
+          };
+          this.tooltip = new mapboxgl.Marker(option)
+            .setLngLat([10, 0])
+            .addTo(map);
+          map.addSource("draw-polygon", {
+            type: "geojson",
+            data: null,
+          });
+          map.addLayer({
+            id: "draw-polygon-fill",
+            source: "draw-polygon",
+            type: "fill",
+            paint: {
+              "fill-color": "red",
+              "fill-opacity": 0.1,
+            },
+          });
+          map.addLayer({
+            id: "draw-polygon-stroke",
+            source: "draw-polygon",
+            type: "line",
+            paint: {
+              "line-color": "red",
+              "line-width": 3,
+            },
+          });
+
+          map.addSource("draw-line", {
+            type: "geojson",
+            data: null,
+          });
+          map.addLayer({
+            id: "draw-line",
+            source: "draw-line",
+            type: "line",
+            paint: {
+              "line-color": "red",
+              "line-width": 3,
+            },
+          });
+
+          map.addSource("draw-point", {
+            type: "geojson",
+            data: null,
+          });
+          map.addLayer({
+            id: "draw-point",
+            source: "draw-point",
+            type: "circle",
+            paint: {
+              "circle-radius": 2,
+              "circle-color": "white",
+              "circle-stroke-color": "red",
+              "circle-stroke-width": 2,
+            },
+          });
+
+          map.on("click", (e) => {
+            if (that.isDraw) {
+              const lonlat = e.lngLat.toArray();
+              that.points.push(lonlat);
+              const ptJson = turf.multiPoint(that.points);
+              map.getSource("draw-point").setData(ptJson);
+              if (that.drawType === "rect" && that.points.length === 2) {
+                that.setRectData(that.points, true);
+              } else if (
+                that.drawType === "circle" &&
+                that.points.length === 2
+              ) {
+                that.setCircleData(that.points, true);
+              }
+            }
+          });
+
+          map.on("mousemove", (e) => {
+            if(this.isDraw){
+              const lonlat=e.lngLat.toArray();
+              let text=that.points.length===0?'点击地图开始绘制':'双击地图结束绘制'
+              text='rect,circle'.indexOf(this.drawType)!==-1?'点击下一个点结束绘制':text
+              that.tooltip.getElement().innerText=text
+              that.tooltip.setLngLat(lonlat)
+              if(that.points.length>0){
+                if(that.drawType==="line"){
+                  const points=that.points.concat([lonlat])
+                  const line=turf.lineString(points)
+                  map.getSource('draw-line').setData(line)
+                }else if(that.drawType==='polygon'){
+                  let points=that.points
+                }
+              }
+            }
+          });
+
+          map.on("dblclick", (e) => {
+            if (that.isDraw) {
+              that.endDraw();
+            }
+          });
+        },
+        endDraw() {
+          this.drawType = "";
+          this.isDraw = false;
+          this.tooltip.setLngLat([0, 0]);
+        },
+
+        setRectData(points, isend) {
+          if (isend) this.endDraw();
+          const p1=points[0];
+          const p2=points[1];
+          const ps=[[p1,[p1[0],p2[1]],p2,[p1[1],p2[0]],p1]];
+          const polygon=turf.polygon(ps);
+          map.getSource('draw-polygon').setData(polygon);
+        },
+
+        setCircleData(points, isend) {
+          if (isend) this.endDraw();
+          const p1=points[0];
+          const p2=points[1];
+          const center=turf.point(p1);
+          const to=turf.point(p2);
+          const dis=turf.distance(center,to);
+          const polygon=turf.buffer(center,dis);
+          map.getSource('draw-polygon').setData(polygon);
+          const line=turf.lineString(points)
+          map.getSource('draw-line').setData(line)
+
+        },
+
+        activeDraw(type) {
+          this.isDraw=true
+          this.drawType=type
+          map.getCanvas().style.cursor="default"
+          map.doubleClickZoom.disable()
+          this.clearDraw()
+        },
+
+        clearDraw() {
+          const json={
+            "type":'FeatureCollection',
+            'features':[]
+          }
+          map.getSource('draw-polygon').setData(json)
+          map.getSource('draw-line').setData(json)
+          map.getSource('draw-point').setData(json)
+          this.tooltip.setLngLat([0,0])
+          this.markers.forEach(markers=>{
+            markers.remove()
+          })
+          console.log(this.markers)
+          this.points=[]
+        },
+      };
+
+      map.on("load", () => {
+        drawTools.init();
+      });
+    </script>
+  </body>
+</html>

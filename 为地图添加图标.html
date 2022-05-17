@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
+    <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+    <title>Document</title>
+    <style>
+      html,
+      body,
+      #map {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      const style = {
+        version: 8,
+        bearing: 70,
+        pitch: 60,
+        light: {
+          anchor: "viewport",
+          color: "white",
+          intensity: 0.4,
+        },
+        transition: {
+          duration: 300,
+          delay: 100,
+        },
+        sources: {
+          XYZTile: {
+            type: "raster",
+            tiles: [
+              "https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}",
+            ],
+            tileSize: 256,
+          },
+        },
+        layers: [
+          {
+            id: "background",
+            type: "background",
+            paint: {
+              "background-color": "#000",
+              "background-opacity": 0.8,
+            },
+          },
+          {
+            id: "XYZTile",
+            type: "raster",
+            source: "XYZTile",
+            minzoom: 0,
+            maxzoom: 17,
+          },
+        ],
+      };
+      const dom = document.getElementById("map");
+      window.map = new mapboxgl.Map({
+        container: dom,
+        style: style,
+        center: [103.081163, 37.1612],
+        zoom: 2,
+      });
+      map.on("load", () => {
+        map.loadImage("data/icon.png", function (error, image) {
+          if (error) throw error;
+          map.addImage("icon", image);
+
+          map.addSource("geojson", {
+            type: "geojson",
+            data: "data/point.geojson",
+          });
+
+          map.addLayer({
+            id: "points",
+            type: "symbol",
+            source: 'geojson',
+            layout: {
+              "icon-image": "icon",
+              "icon-size": 0.25,
+            },
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
