@@ -165,19 +165,39 @@
           });
 
           map.on("mousemove", (e) => {
-            if(this.isDraw){
-              const lonlat=e.lngLat.toArray();
-              let text=that.points.length===0?'点击地图开始绘制':'双击地图结束绘制'
-              text='rect,circle'.indexOf(this.drawType)!==-1?'点击下一个点结束绘制':text
-              that.tooltip.getElement().innerText=text
-              that.tooltip.setLngLat(lonlat)
-              if(that.points.length>0){
-                if(that.drawType==="line"){
-                  const points=that.points.concat([lonlat])
-                  const line=turf.lineString(points)
-                  map.getSource('draw-line').setData(line)
-                }else if(that.drawType==='polygon'){
-                  let points=that.points
+            if (this.isDraw) {
+              const lonlat = e.lngLat.toArray();
+              let text =
+                that.points.length === 0
+                  ? "点击地图开始绘制"
+                  : "双击地图结束绘制";
+              if (that.points.length === 1) {
+                text =
+                  "rect,circle".indexOf(this.drawType) !== -1
+                    ? "点击下一个点结束绘制"
+                    : text;
+              }
+
+              that.tooltip.getElement().innerText = text;
+              that.tooltip.setLngLat(lonlat);
+              if (that.points.length > 0) {
+                if (that.drawType === "line") {
+                  const points = that.points.concat([lonlat]);
+                  const line = turf.lineString(points);
+                  map.getSource("draw-line").setData(line);
+                } else if (that.drawType === "polygon") {
+                  let points = that.points.concat([lonlat, that.points[0]]);
+                  points = [points];
+                  if (that.points.length > 1) {
+                    const polygon = turf.polygon(points);
+                    map.getSource("draw-polygon").setData(polygon);
+                  }
+                } else if (that.drawType === "rect") {
+                  const points = that.points.concat([lonlat]);
+                  that.setRectData(points, false);
+                } else if (that.drawType === "circle") {
+                  const points = that.points.concat([lonlat]);
+                  that.setCircleData(points, false);
                 }
               }
             }
@@ -197,49 +217,48 @@
 
         setRectData(points, isend) {
           if (isend) this.endDraw();
-          const p1=points[0];
-          const p2=points[1];
-          const ps=[[p1,[p1[0],p2[1]],p2,[p1[1],p2[0]],p1]];
-          const polygon=turf.polygon(ps);
-          map.getSource('draw-polygon').setData(polygon);
+          const p1 = points[0];
+          const p2 = points[1];
+          const ps = [[p1, [p1[0], p2[1]], p2, [p2[0], p1[1]], p1]];
+          const polygon = turf.polygon(ps);
+          map.getSource("draw-polygon").setData(polygon);
         },
 
         setCircleData(points, isend) {
           if (isend) this.endDraw();
-          const p1=points[0];
-          const p2=points[1];
-          const center=turf.point(p1);
-          const to=turf.point(p2);
-          const dis=turf.distance(center,to);
-          const polygon=turf.buffer(center,dis);
-          map.getSource('draw-polygon').setData(polygon);
-          const line=turf.lineString(points)
-          map.getSource('draw-line').setData(line)
-
+          const p1 = points[0];
+          const p2 = points[1];
+          const center = turf.point(p1);
+          const to = turf.point(p2);
+          const dis = turf.distance(center, to);
+          const polygon = turf.buffer(center, dis);
+          map.getSource("draw-polygon").setData(polygon);
+          const line = turf.lineString(points);
+          map.getSource("draw-line").setData(line);
         },
 
         activeDraw(type) {
-          this.isDraw=true
-          this.drawType=type
-          map.getCanvas().style.cursor="default"
-          map.doubleClickZoom.disable()
-          this.clearDraw()
+          this.isDraw = true;
+          this.drawType = type;
+          map.getCanvas().style.cursor = "default";
+          map.doubleClickZoom.disable();
+          this.clearDraw();
         },
 
         clearDraw() {
-          const json={
-            "type":'FeatureCollection',
-            'features':[]
-          }
-          map.getSource('draw-polygon').setData(json)
-          map.getSource('draw-line').setData(json)
-          map.getSource('draw-point').setData(json)
-          this.tooltip.setLngLat([0,0])
-          this.markers.forEach(markers=>{
-            markers.remove()
-          })
-          console.log(this.markers)
-          this.points=[]
+          const json = {
+            type: "FeatureCollection",
+            features: [],
+          };
+          map.getSource("draw-polygon").setData(json);
+          map.getSource("draw-line").setData(json);
+          map.getSource("draw-point").setData(json);
+          this.tooltip.setLngLat([0, 0]);
+          this.markers.forEach((markers) => {
+            markers.remove();
+          });
+          console.log(this.markers);
+          this.points = [];
         },
       };
 
