@@ -77,7 +77,6 @@
       });
       var drawTools = {
         points: [],
-        markers: [],
         tooltip: null,
         isDraw: false,
         drawType: "",
@@ -254,10 +253,6 @@
           map.getSource("draw-line").setData(json);
           map.getSource("draw-point").setData(json);
           this.tooltip.setLngLat([0, 0]);
-          this.markers.forEach((markers) => {
-            markers.remove();
-          });
-          console.log(this.markers);
           this.points = [];
         },
       };

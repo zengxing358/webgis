@@ -1,94 +1,295 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css' rel='stylesheet' />
-  <script src='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js'></script>
-<script src="https://unpkg.com/@turf/turf@6.3.0/turf.min.js"?></script>
-<script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
-  <title>Document</title>
-  <style>
-    html,body,#map{
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding:0;
-      overflow: hidden;
-    }
-  </style>
-</head>
-<body>
-  <div id="map">
-    <div class="button-box">
-      <button>测距</button>
-      <button>测面</button>
-    </div>
-  </div>
-  <script>
-    const style = {
-        "version": 8,
-        "sources": {
-            "nav": {
-                "type": "raster",
-                "tiles": ['https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}'],
-                "tileSize": 256
-            }
-        },
-        "layers": [{
-            "id": "nav",
-            "type": "raster",
-            "source": "nav",
-            "minzoom": 0,
-            "maxzoom": 17
-        }]
-    }
-    const dom=document.getElementById('map');
-    window.map=new mapboxgl.Map({
-      container:dom,
-      style:style,
-      center:[103.081163, 37.1612],
-      zoom:3.5,
-    })
-    var measureTools={
-      points:[],
-      markers:[],
-      tooltip:null,
-      isMeasure:false,
-      measureType:'',
-      init(){
-
-      },
-
-      activeMeasure(type){
-
-      },
-
-      getLength(points){
-
-      },
-
-      getArea(points){
-
-      },
-
-      addMarker(){
-
-      },
-
-      addCloseMarker(){
-
-      },
-
-      clearMeasure(){
-
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6.3.0/turf.min.js" ?></script>
+    <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+    <title>Document</title>
+    <style>
+      html,
+      body,
+      #map {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
       }
-    }
+      .button-box {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 99;
+      }
+      .measure-result,
+      .measure-result-close {
+        padding: 0 3px;
+        background-color: rgba(255, 255, 255, 0.6);
+        border-radius: 4px;
+      }
+      .measure-result-close {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map">
+      <div class="button-box">
+        <button onclick="measureTools.activeMeasure('dis')">测距</button>
+        <button onclick="measureTools.activeMeasure('area')">测面</button>
+      </div>
+    </div>
+    <script>
+      const style = {
+        version: 8,
+        sources: {
+          nav: {
+            type: "raster",
+            tiles: [
+              "https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}",
+            ],
+            tileSize: 256,
+          },
+        },
+        layers: [
+          {
+            id: "nav",
+            type: "raster",
+            source: "nav",
+            minzoom: 0,
+            maxzoom: 17,
+          },
+        ],
+      };
+      const dom = document.getElementById("map");
+      window.map = new mapboxgl.Map({
+        container: dom,
+        style: style,
+        center: [103.081163, 37.1612],
+        zoom: 3.5,
+      });
+      var measureTools = {
+        points: [],
+        markers: [],
+        tooltip: null,
+        isMeasure: false,
+        measureType: "",
+        init() {
+          const that = this;
+          const ele = document.createElement("div");
+          ele.setAttribute("class", "measure-result");
+          const option = {
+            element: ele,
+            anchor: "left",
+            offset: [10, 0],
+          };
+          this.tooltip = new mapboxgl.Marker(option)
+            .setLngLat([10, 0])
+            .addTo(map);
 
-    map.on('load',()=>{
-      measureTools.init()
-    })
-  </script>
-</body>
+          map.addSource("measure-area", { type: "geojson", data: null });
+          map.addLayer({
+            id: "measure-area-fill",
+            source: "measure-area",
+            type: "fill",
+            paint: {
+              "fill-color": "red",
+              "fill-opacity": 0.1,
+            },
+          });
+          map.addLayer({
+            id: "measure-area-stroke",
+            source: "measure-area",
+            type: "line",
+            paint: {
+              "line-color": "red",
+              "line-width": 3,
+            },
+          });
+
+          map.addSource("measure-line", { type: "geojson", data: null });
+          map.addLayer({
+            id: "measure-line",
+            source: "measure-line",
+            type: "line",
+            paint: {
+              "line-color": "red",
+              "line-width": 3,
+            },
+          });
+
+          map.addSource("measure-point", {
+            type: "geojson",
+            data: null,
+          });
+          map.addLayer({
+            id: "measure-point",
+            source: "measure-point",
+            type: "circle",
+            paint: {
+              "circle-radius": 2,
+              "circle-color": "white",
+              "circle-stroke-color": "red",
+              "circle-stroke-width": 2,
+            },
+          });
+
+          map.on("click", (e) => {
+            console.log("click");
+            if (that.isMeasure) {
+              const lonlat = e.lngLat.toArray();
+              that.points.push(lonlat);
+              const ptJson = turf.multiPoint(that.points);
+              map.getSource("measure-point").setData(ptJson);
+              if (that.measureType === "dis") {
+                const text =
+                  that.points.length === 1
+                    ? "起点"
+                    : that.getLength(that.points);
+                that.addMarker(text, lonlat);
+              }
+            }
+          });
+          map.on("mousemove", (e) => {
+            if (that.isMeasure) {
+              const lonlat = e.lngLat.toArray();
+              if (that.points.length === 0) {
+                const text = "点击地图开始测量";
+                that.tooltip.getElement().innerText = text;
+                that.tooltip.setLngLat(lonlat);
+              } else {
+                if (that.measureType === "dis") {
+                  const points = that.points.concat([lonlat]);
+                  const text = that.getLength(points);
+                  that.tooltip.getElement().innerText = text;
+                  that.tooltip.setLngLat(lonlat);
+                  const line = turf.lineString(points);
+                  map.getSource("measure-line").setData(line);
+                } else {
+                  console.log(that.points[0], "p");
+                  let points = that.points.concat([lonlat, that.points[0]]);
+                  console.log(points, "p2");
+                  points = [points];
+                  const text =
+                    that.points.length > 1
+                      ? that.getArea(points)
+                      : "点击地图继续测量";
+                  that.tooltip.getElement().innerText = text;
+                  that.tooltip.setLngLat(lonlat);
+                  if (that.points.length > 1) {
+                    const area = turf.polygon(points);
+                    map.getSource("measure-area").setData(area);
+                  }
+                }
+              }
+            }
+          });
+          map.on("dblclick", (e) => {
+            console.log("dblclick");
+            if (that.isMeasure) {
+              const lonlat = e.lngLat.toArray();
+              that.addCloseMarker(lonlat);
+              if (that.measureType === "area" && that.points.length > 1) {
+                let points = that.points.concat([lonlat, that.points[0]]);
+                points = [points];
+                const text = that.getArea(points);
+                that.addMarker(text, lonlat);
+              }
+              that.measureType = "";
+              that.isMeasure = false;
+            }
+          });
+        },
+
+        activeMeasure(type) {
+          this.isMeasure = true;
+          this.measureType = type;
+          map.getCanvas().style.cursor = "default";
+          map.doubleClickZoom.disable();
+          this.clearMeasure();
+        },
+
+        getLength(points) {
+          const line = turf.lineString(points);
+          let length = turf.length(line);
+          length =
+            length > 1
+              ? length.toFixed(2) + "km"
+              : Math.round(length * 1000) + "m";
+          return length;
+        },
+
+        getArea(points) {
+          const polygon = turf.polygon(points);
+          let area = turf.area(polygon);
+          area =
+            area > 1000
+              ? (area / 1000000).toFixed(2) + "km²"
+              : Math.round(area) + "m²";
+          return area;
+        },
+
+        addMarker(text, lonlat) {
+          const ele = document.createElement("div");
+          ele.setAttribute("class", "measure-result");
+          ele.innerText = text;
+          const option = {
+            element: ele,
+            anchor: "left",
+            offset: [10, 0],
+          };
+          const marker = new mapboxgl.Marker(option)
+            .setLngLat(lonlat)
+            .addTo(map);
+          this.markers.push(marker);
+        },
+
+        addCloseMarker(lonlat) {
+          const that = this;
+          const ele = document.createElement("div");
+          ele.setAttribute("class", "measure-result-close");
+          ele.innerText = "x";
+          const option = {
+            element: ele,
+            anchor: "left",
+            offset: [0, -20],
+          };
+          const marker = new mapboxgl.Marker(option)
+            .setLngLat(lonlat)
+            .addTo(map);
+          this.markers.push(marker);
+          ele.onclick = () => {
+            that.clearMeasure();
+          };
+        },
+
+        clearMeasure() {
+          const json = {
+            type: "FeatureCollection",
+            features: [],
+          };
+          map.getSource("measure-area").setData(json);
+          map.getSource("measure-line").setData(json);
+          map.getSource("measure-point").setData(json);
+          this.tooltip.setLngLat([0, 0]);
+          this.markers.forEach((marker) => {
+            marker.remove();
+          });
+          this.markers = [];
+          this.points = [];
+        },
+      };
+
+      map.on("load", () => {
+        measureTools.init();
+      });
+    </script>
+  </body>
 </html>
