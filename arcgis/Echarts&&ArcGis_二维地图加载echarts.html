@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>echarts和ArcGIS JS API结合</title>
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.22/esri/css/main.css"
+    />
+
+    <script
+      type="text/javascript"
+      src="http://code.jquery.com/jquery-1.4.1.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="https://fastly.jsdelivr.net/npm/echarts@5.3.2/dist/echarts.min.js"
+    ></script>
+    <script src="https://js.arcgis.com/4.22/init.js"></script>
+    <style>
+      body {
+        margin: 0 !important;
+      }
+      #mapview {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="mapview"></div>
+    <script>
+      require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/Basemap",
+        "esri/layers/TileLayer",
+      ], function (Map, MapView, Basemap, TileLayer) {
+        var basemap = new Basemap({
+          baseLayers: [
+            new TileLayer({
+              url: "http://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer",
+              title: "Basemap",
+            }),
+          ],
+          title: "basemap",
+          id: "basemap",
+        });
+
+        var map = new Map({
+          basemap: basemap,
+        });
+        var view = new MapView({
+          container: "mapview",
+          map: map,
+          zoom: 8,
+          center: [104.072043, 30.663724],
+        });
+
+        view.when(function () {
+          view.watch("extent", function () {
+            relocatePopup();
+          });
+          view.watch("rotation", function () {
+            relocatePopup();
+          });
+
+          echartsMapInit();
+        });
+
+        function relocatePopup(e) {
+          for (var i = 0; i < echartsInfos.length; i++) {
+            var echartsInfo = echartsInfos[i];
+
+            var mapPoint = {
+              x: echartsInfo.x,
+              y: echartsInfo.y,
+              //spatialReference: view.spatialReference
+              spatialReference: {
+                wkid: 4326,
+              },
+            };
+            var screenPoint = view.toScreen(mapPoint);
+            var obj = {};
+            obj.x = screenPoint.x;
+            obj.y = screenPoint.y;
+            obj.option = echartsInfo.option;
+            obj.id = echartsInfo.id;
+            obj.echartsObj = echartsInfo.echartsObj;
+
+            positionEchartsMap(obj);
+          }
+        }
+
+        function positionEchartsMap(obj) {
+          $("#" + obj.id).css(
+            "transform",
+            "translate3d(" + obj.x + "px, " + obj.y + "px, 0)"
+          );
+
+          switch (view.zoom) {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+              $("#" + obj.id).css("height", "50px");
+              $("#" + obj.id).css("width", "100px");
+              break;
+            case 6:
+            case 7:
+            case 8:
+              $("#" + obj.id).css("height", "120px");
+              $("#" + obj.id).css("width", "200px");
+              break;
+            case 9:
+            case 10:
+              $("#" + obj.id).css("height", "150px");
+              $("#" + obj.id).css("width", "300px");
+              break;
+            case 11:
+            case 12:
+              $("#" + obj.id).css("height", "200px");
+              $("#" + obj.id).css("width", "350px");
+              break;
+            default:
+              $("#" + obj.id).css("height", "250px");
+              $("#" + obj.id).css("width", "400px");
+          }
+          if (obj.echartsObj) {
+            obj.echartsObj.resize();
+          }
+        }
+
+        function echartsMapInit() {
+          echartsInfos = [];
+          echartsInfos.push({
+            x: 104.072043,
+            y: 30.663724,
+            content:
+              '<div id="info1" style="height:150px;width:300px;position:absolute;"></div>',
+            id: "info1",
+            echartsObj: null,
+            option: {
+              color: ["#3398DB"],
+              tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                  type: "shadow",
+                },
+              },
+              grid: {
+                left: "3%",
+                right: "4%",
+                bottom: "3%",
+                top: "3%",
+                containLabel: true,
+                //y2: 140
+              },
+              xAxis: [
+                {
+                  type: "category",
+                  data: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+                  axisTick: {
+                    alignWithLabel: true,
+                  },
+                  axisLabel: {
+                    interval: 0,
+                    rotate: -30,
+                  },
+                  axisLine: {
+                    lineStyle: {
+                      color: "#FFFFFF",
+                      width: 1,
+                    },
+                  },
+                },
+              ],
+              yAxis: [
+                {
+                  type: "value",
+                  splitLine: {
+                    lineStyle: {
+                      color: ["#0087ED"],
+                    },
+                  },
+                  nameTextStyle: {
+                    color: ["#FFFFFF"],
+                  },
+                  axisLine: {
+                    lineStyle: {
+                      color: "#FFFFFF",
+                      width: 1,
+                    },
+                  },
+                },
+              ],
+              series: [
+                {
+                  name: "直接访问",
+                  type: "bar",
+                  barWidth: "60%",
+                  data: [10, 52, 200, 334, 390, 330, 220],
+                },
+              ],
+            },
+          });
+
+          echartsInfos.push({
+            x: 106.492447,
+            y: 29.608168,
+            content:
+              '<div id="info2" style="height:150px;width:300px;position:absolute;"></div>',
+            id: "info2",
+            echartsObj: null,
+            option: {
+              title: {
+                text: "",
+              },
+              tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                  type: "cross",
+                  label: {
+                    backgroundColor: "#6a7985",
+                  },
+                },
+              },
+              legend: {
+                data: ["视频广告", "直接访问", "搜索引擎"],
+                textStyle: {
+                  color: ["#FFFFFF"],
+                },
+              },
+              toolbox: {
+                feature: {
+                  saveAsImage: {},
+                },
+              },
+              grid: {
+                left: "3%",
+                right: "4%",
+                bottom: "3%",
+                top: "10%",
+                containLabel: true,
+              },
+              xAxis: [
+                {
+                  type: "category",
+                  boundaryGap: false,
+                  data: [
+                    "周一",
+                    "周二",
+                    "周三",
+                    "周四",
+                    "周五",
+                    "周六",
+                    "周日",
+                  ],
+                  nameTextStyle: {
+                    color: ["#FFFFFF"],
+                  },
+                  axisLine: {
+                    lineStyle: {
+                      color: "#FFFFFF",
+                      width: 1,
+                    },
+                  },
+                },
+              ],
+              yAxis: [
+                {
+                  type: "value",
+                  nameTextStyle: {
+                    color: ["#FFFFFF"],
+                  },
+                  axisLine: {
+                    lineStyle: {
+                      color: "#FFFFFF",
+                      width: 1,
+                    },
+                  },
+                },
+              ],
+              series: [
+                {
+                  name: "视频广告",
+                  type: "line",
+                  stack: "总量",
+                  areaStyle: {},
+                  data: [150, 232, 201, 154, 190, 330, 410],
+                },
+                {
+                  name: "直接访问",
+                  type: "line",
+                  stack: "总量",
+                  areaStyle: { normal: {} },
+                  data: [320, 332, 301, 334, 390, 330, 320],
+                },
+                {
+                  name: "搜索引擎",
+                  type: "line",
+                  stack: "总量",
+                  label: {
+                    normal: {
+                      show: true,
+                      position: "top",
+                    },
+                  },
+                  areaStyle: { normal: {} },
+                  data: [820, 932, 901, 934, 1290, 1330, 1320],
+                },
+              ],
+            },
+          });
+
+          for (var i = 0; i < echartsInfos.length; i++) {
+            var echartsInfo = echartsInfos[i];
+
+            var mapPoint = {
+              x: echartsInfo.x,
+              y: echartsInfo.y,
+              spatialReference: {
+                wkid: 4326,
+              },
+            };
+            var screenPoint = view.toScreen(mapPoint);
+            var obj = {};
+            obj.x = screenPoint.x;
+            obj.y = screenPoint.y;
+            obj.content = echartsInfo.content;
+            obj.id = echartsInfo.id;
+            obj.option = echartsInfo.option;
+            obj.echartsObj = echartsInfo.echartsObj;
+            echartsInfos[i].echartsObj = loadEchartsMap(obj);
+          }
+        }
+
+        function loadEchartsMap(obj) {
+          $("#mapview").append(obj.content);
+
+          var dom = document.getElementById(obj.id);
+          var myChart = echarts.init(dom);
+          myChart.setOption(obj.option);
+
+          positionEchartsMap(obj);
+          return myChart;
+        }
+      });
+    </script>
+  </body>
+</html>
