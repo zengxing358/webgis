@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="http://js.arcgis.com/4.20/esri/css/main.css" />
+    <script src="https://js.arcgis.com/4.20/"></script>
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+    <title>Document</title>
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewDiv">
+      <div
+        id="line-button"
+        class="esri-widget esri-widget--button esri-interactive"
+        title="画线"
+      >
+        <span class="esri-icon-polyline"></span>
+      </div>
+      <div
+        id="area-button"
+        class="esri-widget esri-widget--button esri-interactive"
+        title="画面"
+      >
+        <span class="esri-icon-polygon"></span>
+      </div>
+      <div
+        id="point-button"
+        class="esri-widget esri-widget--button esri-interactive"
+        title="画点"
+      >
+        <span class="esri-icon-radio-checked"></span>
+      </div>
+      <div
+        id="circle-button"
+        class="esri-widget esri-widget--button esri-interactive"
+        title="画圆"
+      >
+        <span class="esri-icon-radio-unchecked"></span>
+      </div>
+      <div
+        id="rectangle-button"
+        class="esri-widget esri-widget--button esri-interactive"
+        title="画矩形"
+      >
+        <span class="esri-icon-checkbox-unchecked"></span>
+      </div>
+      <div id="query" class="esri-widget esri-widget--button esri-interactive">
+        <span class="esri-icon-checkbox-unchecked"></span>
+      </div>
+    </div>
+
+    <script>
+      require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/geometry/Point",
+        "esri/geometry/Polyline",
+        "esri/geometry/Polygon",
+        "esri/Graphic",
+        "esri/views/draw/Draw",
+        "esri/geometry/Circle",
+        "esri/rest/support/Query",
+        "esri/tasks/QueryTask",
+        "esri/layers/GraphicsLayer",
+        "dojo/domReady!",
+      ], (
+        Map,
+        MapView,
+        Point,
+        Polyline,
+        Polygon,
+        Graphic,
+        Draw,
+        Circle,
+        Query,
+        QueryTask,
+        GraphicsLayer
+      ) => {
+        //添加底图
+        var map = new Map({
+          basemap: "streets-navigation-vector",
+        });
+        var view = new MapView({
+          container: "viewDiv",
+          map: map,
+          center: [-146.71779999999998, 63.62030000000004],
+        });
+
+        //添加1个点
+        const point = {
+          type: "point",
+          longitude: -49.97,
+          latitude: 41.73,
+        };
+        const markerSymbol = {
+          type: "simple-marker",
+          color: [255, 40, 40],
+          outline: {
+            color: [255, 255, 255],
+            width: 2,
+          },
+        };
+        const pointGraphic = new Graphic({
+          geometry: point,
+          symbol: markerSymbol,
+        });
+        view.graphics.add(pointGraphic);
+
+        //添加1条线
+        let polyline = {
+          type: "polyline", // autocasts as new Polyline()
+          paths: [
+            [-111.3, 52.68],
+            [-98, 49.5],
+          ],
+        };
+        let polylineSymbol = {
+          type: "simple-line",
+          // autocasts as SimpleLineSymbol()
+          color: [226, 119, 40],
+          width: 4,
+        };
+        let polylineAtt = {
+          Name: "Keystone Pipeline",
+          Owner: "TransCanada",
+        };
+        let polylineGraphic = new Graphic({
+          geometry: polyline,
+          symbol: polylineSymbol,
+          attributes: polylineAtt,
+        });
+        view.graphics.add(polylineGraphic);
+
+        //添加1个面
+        const polygon = {
+          type: "polygon",
+          rings: [
+            [-64.78, 32.3],
+            [-66.07, 18.45],
+            [-80.21, 25.78],
+            [-64.78, 32.3],
+          ],
+        };
+        const fillSymbol = {
+          type: "simple-fill",
+          color: [227, 139, 79, 0.8],
+          outline: {
+            color: [255, 255, 255],
+            width: 1,
+          },
+        };
+        const polygonGraphic = new Graphic({
+          geometry: polygon,
+          symbol: fillSymbol,
+        });
+        view.graphics.add(polygonGraphic);
+        //添加控件
+        view.ui.add("line-button", "top-left");
+        view.ui.add("area-button", "top-left");
+        view.ui.add("point-button", "top-left");
+        view.ui.add("circle-button", "top-left");
+        view.ui.add("rectangle-button", "top-left");
+        view.when(() => {
+          var draw = new Draw({
+            view: view,
+          });
+          var drawLineButton = document.getElementById("line-button");
+          drawLineButton.onclick = function () {
+            view.graphics.removeAll();
+            enableCreateLine(draw, view);
+          };
+          function enableCreateLine(draw, view) {
+            var action = draw.create("polyline", {
+              mode: "click",
+            });
+            view.focus();
+            action.on("vertex-add", createPolyline);
+            action.on("vertex-remove", createPolyline);
+            action.on("cursor-update", createPolyline);
+            action.on("draw-complete", createPolyline);
+          }
+          function createPolyline(event) {
+            var vertices = event.vertices;
+            view.graphics.removeAll();
+            var graphic = new Graphic({
+              geometry: new Polyline({
+                paths: vertices,
+                spatialReference: view.spatialReference,
+              }),
+              symbol: {
+                type: "simple-line",
+                color: [4, 90, 141],
+                width: 4,
+                cap: "round",
+                join: "round",
+              },
+            });
+            view.graphics.add(graphic);
+          }
+
+          var draw = new Draw({
+            view: view,
+          });
+          var drawAreaButton = document.getElementById("area-button");
+          drawAreaButton.onclick = function () {
+            view.graphics.removeAll();
+            enableCreateArea(draw, view);
+          };
+          function enableCreateArea(draw, view) {
+            var action = draw.create("polygon", {
+              mode: "click",
+            });
+            view.focus();
+            action.on("vertex-add", createPolygon);
+            action.on("vertex-remove", createPolygon);
+            action.on("cursor-update", createPolygon);
+            action.on("draw-complete", createPolygon);
+          }
+          function createPolygon(event) {
+            var vertices = event.vertices;
+            view.graphics.removeAll();
+            var graphic = new Graphic({
+              geometry: new Polygon({
+                hasZ: false,
+                hasM: false,
+                rings: [vertices],
+                spatialReference: view.spatialReference,
+              }),
+              symbol: {
+                type: "simple-fill",
+                color: [51, 51, 204, 0.9],
+                style: "solid",
+                outline: {
+                  color: "red",
+                  width: 1,
+                },
+              },
+            });
+            view.graphics.add(graphic);
+          }
+          //画点
+          var draw = new Draw({
+            view: view,
+          });
+          var drawPointButton = document.getElementById("point-button");
+          drawPointButton.onclick = function () {
+            enableCreatePoint(draw, view);
+          };
+          function enableCreatePoint(draw, view) {
+            var action = draw.create("point", {
+              mode: "click",
+            });
+            view.focus();
+            action.on("vertex-add", createPoint);
+            action.on("vertex-remove", createPoint);
+            action.on("draw-complete", createPoint);
+          }
+          function createPoint(event) {
+            var coordinates = event.coordinates;
+            var graphic = new Graphic({
+              geometry: new Point({
+                hasZ: false,
+                hasM: false,
+                x: coordinates[0],
+                y: coordinates[1],
+                spatialReference: view.spatialReference,
+              }),
+              symbol: {
+                type: "simple-marker",
+                style: "square",
+                color: "blue",
+                size: "8px",
+                outline: {
+                  color: [255, 255, 0],
+                  width: 3, // points
+                },
+              },
+            });
+            view.graphics.add(graphic);
+          }
+          //画圆环
+          var draw = new Draw({
+            view: view,
+          });
+          var drawCircleButton = document.getElementById("circle-button");
+          drawCircleButton.onclick = function () {
+            enableCreateCircle(draw, view);
+          };
+          function enableCreateCircle(draw, view) {
+            var action = draw.create("circle", {
+              mode: "click",
+            });
+            view.focus();
+            action.on("vertex-remove", createCircle);
+            action.on("cursor-update", createCircle);
+            action.on("draw-complete", createCircle);
+          }
+          function createCircle(event) {
+            var vertices = event.vertices;
+            if (vertices.length < 2) {
+              return;
+            }
+            view.graphics.removeAll();
+            var center = new Point({
+              hasZ: false,
+              hasM: false,
+              x: vertices[0][0],
+              y: vertices[0][1],
+              spatialReference: view.spatialReference,
+            });
+            var dis = center.distance(
+              new Point({
+                hasZ: false,
+                hasM: false,
+                x: vertices[1][0],
+                y: vertices[1][1],
+                spatialReference: view.spatialReference,
+              })
+            );
+            var graphic = new Graphic({
+              geometry: new Circle({
+                hasZ: false,
+                hasM: false,
+                center: center,
+                radius: dis,
+                spatialReference: view.spatialReference,
+              }),
+              symbol: {
+                type: "simple-fill",
+                color: [51, 51, 204, 0.9],
+                style: "solid",
+                outline: {
+                  color: "white",
+                  width: 1,
+                },
+              },
+            });
+            view.graphics.add(graphic);
+          }
+          //画矩形
+          var draw = new Draw({
+            view: view,
+          });
+          var drawRectangleButton = document.getElementById("rectangle-button");
+          drawRectangleButton.onclick = function () {
+            enableCreateRectangle(draw, view);
+          };
+          function enableCreateRectangle(draw, view) {
+            var action = draw.create("rectangle", {
+              mode: "click",
+            });
+            view.focus();
+            action.on("vertex-remove", createRectangle);
+            action.on("cursor-update", createRectangle);
+            action.on("draw-complete", createRectangle);
+          }
+          function createRectangle(event) {
+            var vertices = event.vertices;
+            if (vertices.length < 2) {
+              return;
+            }
+            var rings = [
+              vertices[0],
+              [vertices[0][0], vertices[1][1]],
+              vertices[1],
+              [vertices[1][0], vertices[0][1]],
+            ];
+            view.graphics.removeAll();
+            var graphic = new Graphic({
+              geometry: new Polygon({
+                hasZ: false,
+                hasM: false,
+                rings: [rings],
+                spatialReference: view.spatialReference,
+              }),
+              symbol: {
+                type: "simple-fill",
+                color: [51, 51, 204, 0.9],
+                style: "solid",
+                outline: {
+                  color: "white",
+                  width: 1,
+                },
+              },
+            });
+            view.graphics.add(graphic);
+          }
+          //属性查询
+          var url =
+            "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/Prominent_Peaks_US/FeatureServer/0";
+          var queryTask = new QueryTask({
+            url: url,
+          });
+          let query = new Query();
+          query.returnGeometry = true;
+          query.outFields = ["*"];
+          query.where = "1=1";
+          queryTask.execute(query).then(function (results) {
+            console.log(results);
+            for (let i = 0; i < results.features.length; i++) {
+              const point = {
+                type: "point", // autocasts as new Point()
+                longitude: results.features[i].geometry.longitude,
+                latitude: results.features[i].geometry.latitude,
+              };
+              const markerSymbol = {
+                type: "simple-marker",
+                // autocasts as new SimpleMarkerSymbol()
+                color: [226, 119, 40],
+                outline: {
+                  // autocasts as new SimpleLineSymbol()
+                  color: [255, 255, 255],
+                  width: 2,
+                },
+              };
+              const pointGraphic = new Graphic({
+                geometry: point,
+                symbol: markerSymbol,
+              });
+              view.graphics.add(pointGraphic);
+            }
+          });
+          //空间查询
+          $("#query").click(function () {
+            var geometry = view.graphics.items[0].geometry;
+            let query = new Query();
+            query.returnGeometry = true;
+            query.geometry = geometry;
+            query.outFields = ["*"];
+            query.where = "1=1";
+            queryTask.execute(query).then(function (results) {
+              if (results.features.length != 0) {
+                view.graphics.removeAll();
+                let layer = new GraphicsLayer();
+                map.add(layer);
+                let arr = [];
+                for (let i = 0; i < results.features.length; i++) {
+                  const point = {
+                    type: "point",
+                    longitude: results.features[i].geometry.longitude,
+                    latitude: results.features[i].geometry.latitude,
+                  };
+                  const markerSymbol = {
+                    type: "simple-marker",
+                    color: "red",
+                    outline: {
+                      color: [255, 255, 255],
+                      width: 2,
+                    },
+                  };
+                  var obj = {
+                    名称: results.features[i].attributes.MTN_PEAK,
+                    州: results.features[i].attributes.STATE,
+                  };
+                  const pointGraphic = new Graphic({
+                    geometry: point,
+                    symbol: markerSymbol,
+                    attributes: obj,
+                    popupTemplate: {
+                      title: "属性",
+                      content: [
+                        {
+                          type: "fields",
+                          fieldInfos: [
+                            {
+                              fieldName: "名称",
+                            },
+                            {
+                              fieldName: "州",
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  });
+                  arr.push(pointGraphic);
+                }
+                layer.addMany(arr);
+              }
+            });
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
