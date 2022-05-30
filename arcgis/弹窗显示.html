@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.23/esri/themes/dark/main.css"
+    />
+    <script src="https://js.arcgis.com/4.23/"></script>
+    <title>Document</title>
+    <style>
+      html,
+      body,
+      #viewDiv {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+    <script>
+      require([
+        "esri/Map",
+        "esri/layers/FeatureLayer",
+        "esri/views/MapView",
+        "esri/geometry/geometryEngine",
+      ], (Map, FeatureLayer, MapView, geometryEngine) => {
+        const map = new Map({
+          basemap: "gray-vector",
+        });
+
+        const view = new MapView({
+          container: "viewDiv",
+          map: map,
+          center: [-117.08, 34.1],
+          zoom: 11,
+        });
+
+        const measureThisAction = {
+          title: "Measure Length",
+          id: "measure-this",
+          image:
+            "https://developers.arcgis.com/javascript/latest/sample-code/popup-actions/live/Measure_Distance16.png",
+        };
+
+        const template = {
+          title: "Trail run",
+          content: "{name}",
+          actions: [measureThisAction],
+        };
+
+        const featureLayer = new FeatureLayer({
+          url: "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/TrailRuns/FeatureServer/0",
+          popupTemplate: template,
+        });
+
+        map.add(featureLayer);
+
+        function measureThis() {
+          const geom = view.popup.selectedFeature.geometry;
+          const initDistance = geometryEngine.geodesicLength(geom, "miles");
+          const distance = parseFloat(
+            Math.round(initDistance * 100) / 100
+          ).toFixed(2);
+          view.popup.content =
+            view.popup.selectedFeature.attributes.name +
+            "<div style='background-color:DarkGray;color:white'>" +
+            distance +
+            " miles.</div>";
+        }
+
+        view.popup.on("trigger-action", (event) => {
+          if (event.action.id === "measure-this") {
+            measureThis();
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
