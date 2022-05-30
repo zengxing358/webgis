@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.18/esri/themes/light/main.css"
+    />
+    <script src="https://js.arcgis.com/4.18/init.js"></script>
+    <title>Document</title>
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+    <script>
+      require([
+        "esri/layers/WebTileLayer",
+        "esri/Map",
+        "esri/Basemap",
+        "esri/widgets/BasemapToggle",
+        "esri/views/SceneView",
+      ], (WebTileLayer, Map, Basemap, BasemapToggle, SceneView) => {
+        const mapBaseLayer = new WebTileLayer({
+          urlTemplate:
+            "https://stamen-tiles-{subDomain}.a.ssl.fastly.net/terrain/{level}/{col}/{row}.png",
+          subDomains: ["a", "b", "c", "d"],
+        });
+        const stamen = new Basemap({
+          baseLayers: [mapBaseLayer],
+          title: "Terrain",
+          id: "terrain",
+          thumbnailUrl:
+            "https://stamen-tiles.a.ssl.fastly.net/terrain/10/177/409.png",
+        });
+        const map = new Map({
+          basemap: "satellite",
+          ground: "world-elevation",
+        });
+        const initCamera = {
+          heading: 124.7,
+          tilt: 82.9,
+          position: {
+            latitude: 40.713906,
+            longitude: -111.848111,
+            z: 1990,
+          },
+        };
+        const view = new SceneView({
+          container: "viewDiv",
+          map: map,
+          camera: initCamera,
+        });
+        view.when(() => {
+          const toggle = new BasemapToggle({
+            visibleElements: {
+              title: true,
+            },
+            view: view,
+            nextBasemap: stamen,
+          });
+          view.ui.add(toggle, "top-right");
+        });
+      });
+    </script>
+  </body>
+</html>
